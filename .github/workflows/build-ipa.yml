@@ -1,0 +1,43 @@
+name: Build AltStore IPA
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: sudo xcode-select -switch /Applications/Xcode_15.4.app
+
+      - name: Build Archive
+        run: |
+          xcodebuild archive \
+            -project MathNotebook.xcodeproj \
+            -scheme MathNotebook \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/MathNotebook.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package Payload to .ipa
+        run: |
+          mkdir -p build/Payload
+          cp -r build/MathNotebook.xcarchive/Products/Applications/MathNotebook.app build/Payload/
+          cd build
+          zip -r MathNotebook.ipa Payload
+          cd ..
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MathNotebook-IPA
+          path: build/MathNotebook.ipa
+          retention-days: 14
